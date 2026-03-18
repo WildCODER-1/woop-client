@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { login, register } from "../services/Auth";
-import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
+
+
 
 // ── Replace these values with your real Firebase config ──────────
 const firebaseConfig = {
@@ -13,10 +13,10 @@ const firebaseConfig = {
   appId:             "YOUR_APP_ID",
 };
 
-const app            = initializeApp(firebaseConfig);
-const auth           = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
-const appleProvider  = new OAuthProvider("apple.com");
+
+
+
+
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
