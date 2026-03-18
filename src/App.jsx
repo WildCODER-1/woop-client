@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import LoginPage from "./features/auth/components/Loginpage";
+import CustomerApp from "./features/customer/components/Customerapp";
+import WasherApp from "./features/washer/components/Washerapp";
+import AdmindDashboard from "./features/admin/components/Admindashboard";
 import { getSession, logout } from "./features/auth/services/Auth";
-import LoginPage       from "./features/auth/components/Loginpage";
-import CustomerApp     from "./features/customer/components/Customerapp";
-import WasherApp       from "./features/washer/components/Washerapp";
-// import AdminDashboard  from "./Admindashboard";
+
 
 export default function App() {
   const [user, setUser] = useState(null);

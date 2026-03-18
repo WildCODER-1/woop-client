@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { brandCss, MapView, TopOverlay, PanelLogo, Badge, SVCS, JOBS } from "../../../components/Shared";
-// import StripeCheckout from "./CheckoutForm";
-import TrackingMap from '../../tracking/components/TrackingMap';
-import AddressPicker from '../../tracking/components/AddressPicker';
+import TrackingMap from "../../tracking/components/TrackingMap";
+import AddressPicker from "../../tracking/components/AddressPicker";
 import * as api from "../../../services/api/api";
+
 const TIMES = ["8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM"];
 
 export default function CustomerApp({ user, onLogout }) {

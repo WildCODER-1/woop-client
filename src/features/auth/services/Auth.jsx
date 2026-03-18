@@ -8,48 +8,15 @@ export const DEMO_USERS = [
   { email: "admin@woop.app",   password: "woop123", role: "admin",    name: "Admin",     init: "A" },
 ];
 
-export async function login(email, password) {
-  try {
-    const response = await fetch('https://woop-server-production.up.railway.app/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Login failed');
-    }
-    
-    const data = await response.json();
-    localStorage.setItem('woop_token', data.token);
-    localStorage.setItem('woop_user', JSON.stringify(data.user));
-    return data.user;
-  } catch (err) {
-    throw new Error(err.message || 'Invalid email or password.');
-  }
-}
-
-export async function register(name, email, password, role = 'customer') {
-  try {
-    const response = await fetch('https://woop-server-production.up.railway.app/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Registration failed');
-    }
-    
-    const data = await response.json();
-    localStorage.setItem('woop_token', data.token);
-    localStorage.setItem('woop_user', JSON.stringify(data.user));
-    return data.user;
-  } catch (err) {
-    throw new Error(err.message || 'Registration failed');
-  }
+export function login(email, password) {
+  const user = DEMO_USERS.find(
+    u => u.email === email && u.password === password
+  );
+  if (!user) throw new Error("Invalid email or password.");
+  // In production: return fetch('/auth/login', { method:'POST', body: JSON.stringify({email,password}) })
+  const token = btoa(JSON.stringify({ role: user.role, name: user.name, init: user.init, email: user.email }));
+  localStorage.setItem("woop_token", token);
+  return user;
 }
 
 export function logout() {
@@ -58,9 +25,25 @@ export function logout() {
 
 export function getSession() {
   try {
-    const userStr = localStorage.getItem('woop_user');
-    if (!userStr) return null;
-    return JSON.parse(userStr);
+    const token = localStorage.getItem("woop_token");
+    if (!token) return null;
+
+    // Real JWT has 3 parts separated by dots
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      // Decode the payload (middle part)
+      const payload = JSON.parse(atob(parts[1]));
+      return {
+        id:    payload.id,
+        name:  payload.name,
+        email: payload.email,
+        role:  payload.role,
+        init:  payload.name?.[0]?.toUpperCase() || "U",
+      };
+    }
+
+    // Legacy base64 token (demo mode)
+    return JSON.parse(atob(token));
   } catch {
     return null;
   }

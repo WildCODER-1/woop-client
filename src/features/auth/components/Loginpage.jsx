@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { login, register } from "../services/Auth";
+import { login } from "./auth";
 
+// ── Firebase — only loads if real config is provided ──────────
+let signInWithPopup = null;
+let googleProvider  = null;
+let appleProvider   = null;
+let firebaseReady   = false;
 
-
-// ── Replace these values with your real Firebase config ──────────
 const firebaseConfig = {
   apiKey:            "YOUR_API_KEY",
   authDomain:        "YOUR_PROJECT.firebaseapp.com",
@@ -13,10 +16,19 @@ const firebaseConfig = {
   appId:             "YOUR_APP_ID",
 };
 
-
-
-
-
+// Only initialise Firebase if the config has been filled in
+if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+  import("firebase/app").then(({ initializeApp }) => {
+    import("firebase/auth").then(({ getAuth, signInWithPopup: swp, GoogleAuthProvider, OAuthProvider }) => {
+      const app        = initializeApp(firebaseConfig);
+      const auth       = getAuth(app);
+      googleProvider   = new GoogleAuthProvider();
+      appleProvider    = new OAuthProvider("apple.com");
+      signInWithPopup  = (provider) => swp(auth, provider);
+      firebaseReady    = true;
+    });
+  });
+}
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
@@ -189,16 +201,17 @@ export default function LoginPage({ onLogin }) {
   const reset = () => { setError(""); setPassword(""); };
 
   // ── Social login (Google or Apple) ──
-  const handleSocialLogin = async (provider) => {
+  const handleSocialLogin = async (providerType) => {
+    if (!firebaseReady || !signInWithPopup) {
+      setError("Add your Firebase config to LoginPage.jsx to enable Google/Apple sign-in.");
+      return;
+    }
+    const provider = providerType === "google" ? googleProvider : appleProvider;
     setLoading(true);
     setError("");
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(provider);
       const firebaseUser = result.user;
-
-      // In production: send firebaseUser.uid + email to your backend
-      // to create/fetch the user record and return your own JWT
-      // For now we create a session directly
       const user = {
         name:  firebaseUser.displayName || "User",
         email: firebaseUser.email,
@@ -209,9 +222,7 @@ export default function LoginPage({ onLogin }) {
       onLogin(user);
     } catch (err) {
       if (err.code === "auth/popup-closed-by-user") {
-        // User closed popup — not an error
-      } else if (err.code === "auth/configuration-not-found") {
-        setError("Firebase not configured yet. Add your config to firebase.js");
+        // user closed popup — not an error
       } else {
         setError(err.message);
       }
@@ -268,11 +279,11 @@ export default function LoginPage({ onLogin }) {
 
       <div className="divider"><span>or</span></div>
 
-      <button className="social-btn" onClick={() => handleSocialLogin(googleProvider)}>
+      <button className="social-btn" onClick={() => handleSocialLogin("google")}>
         <GoogleIcon/> Continue with Google
       </button>
 
-      <button className="social-btn apple" onClick={() => handleSocialLogin(appleProvider)}>
+      <button className="social-btn apple" onClick={() => handleSocialLogin("apple")}>
         <AppleIcon/> Continue with Apple
       </button>
 
@@ -364,36 +375,53 @@ export default function LoginPage({ onLogin }) {
   );
 
   const handleSignIn = async () => {
-    setLoading(true); 
-    setError("");
+    setLoading(true); setError("");
     try {
-      const user = await login(input, password);
+      const BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const res = await fetch(`${BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: input, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed.");
+
+      // Save real JWT from backend
+      localStorage.setItem("woop_token", data.token);
+      const user = {
+        ...data.user,
+        init: data.user.name[0].toUpperCase(),
+      };
       onLogin(user);
     } catch (err) {
       setError(err.message);
-    } finally { 
-      setLoading(false); 
-    }
+    } finally { setLoading(false); }
   };
 
   const handleSignUp = async () => {
-    if (password.length < 8) { 
-      setError("Password must be at least 8 characters."); 
-      return; 
-    }
-    setLoading(true); 
-    setError("");
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    setLoading(true); setError("");
     try {
-      const user = await register(name, input, password, 'customer');
+      const BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const res = await fetch(`${BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email: input, password, role: "customer" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Registration failed.");
+
+      // Save real JWT from backend
+      localStorage.setItem("woop_token", data.token);
+      const user = {
+        ...data.user,
+        init: data.user.name[0].toUpperCase(),
+      };
       onLogin(user);
     } catch (err) {
       setError(err.message);
-    } finally { 
-      setLoading(false); 
-    }
+    } finally { setLoading(false); }
   };
-
-  const SCREENS = { enter: <EnterScreen/>, password: <PasswordScreen/>, signup: <SignupScreen/> };
 
   return (
     <>
@@ -430,7 +458,9 @@ export default function LoginPage({ onLogin }) {
         {/* RIGHT */}
         <div className="login-right">
           <div className="login-box">
-            {SCREENS[screen]}
+            {screen === "enter" && <EnterScreen/>}
+            {screen === "password" && <PasswordScreen/>}
+            {screen === "signup" && <SignupScreen/>}
           </div>
         </div>
 
